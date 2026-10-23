@@ -24,10 +24,20 @@ def main() -> None:
         "reports/figures/final_summary.png",
         "reports/figures/negative_control.png",
         "reports/figures/subgroups.png",
+        "reports/figures/inference_checks.png",
+        "reports/figures/defender_policy_cases.png",
+        "reports/figures/revision_summary.png",
         "reports/media/top_disagreement.gif",
+        "reports/media/defender_policy_case_1.gif",
+        "reports/media/defender_policy_case_2.gif",
+        "reports/media/defender_policy_case_3.gif",
         "outputs/study/shot_features_1s.csv",
         "outputs/robustness/paired_bootstrap.csv",
         "outputs/official_benchmark/scores.csv",
+        "outputs/inference_checks/summary.json",
+        "outputs/nested_models/paired_bootstrap.csv",
+        "outputs/pred_error_mc/summary.json",
+        "outputs/defender_policy/prediction_summary.json",
     ]
     for path in required:
         require(path)
@@ -52,6 +62,11 @@ def main() -> None:
         & (robustness["quality_cohort"] == "all_eligible")
     ].iloc[0]
     assert primary["ci95_low"] < 0 < primary["ci95_high"]
+    inference = json.loads(require("outputs/inference_checks/summary.json").read_text())
+    assert inference["exact_sign_flip_two_sided_p"] > 0.05
+    assert inference["conditional_fraction_as_good_or_better"] > 0.05
+    policy = json.loads(require("outputs/defender_policy/prediction_summary.json").read_text())
+    assert policy["mean_abs_difference_switched"] > policy["mean_abs_difference_not_switched"]
     print("Release validation passed: 10 games, 1,459 shots, 1,211-shot primary cohort.")
 
 

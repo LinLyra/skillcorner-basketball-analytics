@@ -167,6 +167,17 @@ def test_temporal_features_fix_release_defender_and_measure_closing(tmp_path):
     assert np.isclose(row["net_closing_speed_mps"], 7.62)
     assert row["both_detected_rate"] == 1.0
 
+    noisy_a = build_shot_temporal_features(
+        shots, entities, game_id=42, window_seconds=0.2, recent_seconds=0.12,
+        coordinate_noise_seed=7,
+    )
+    noisy_b = build_shot_temporal_features(
+        shots, entities, game_id=42, window_seconds=0.2, recent_seconds=0.12,
+        coordinate_noise_seed=7,
+    )
+    assert np.isclose(noisy_a.iloc[0]["release_distance_m"], noisy_b.iloc[0]["release_distance_m"])
+    assert not np.isclose(noisy_a.iloc[0]["release_distance_m"], row["release_distance_m"])
+
 
 def test_leave_one_game_out_predictions_are_out_of_sample():
     pd = __import__("pandas")

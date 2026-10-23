@@ -21,6 +21,8 @@ For loss metrics, negative differences favor the temporal model.
 
 Under the frame-wise-nearest definition, the selected defender changes at least once during the one-second window in 525 of 1,458 valid trajectories (36.0%). A temporal metric that silently switches defenders therefore answers a different basketball question from one that follows the release defender.
 
+The consequence is measurable. Across 1,209 common predictions, the policies correlate at 0.988, but the mean absolute probability difference is 0.0141 (95th percentile 0.0522), and 68 shots differ by more than five percentage points. Mean absolute difference is 0.0256 when identity switches and 0.0075 otherwise.
+
 ## Interpretation
 
 The current evidence supports a reliability finding rather than a performance claim:
@@ -29,18 +31,20 @@ The current evidence supports a reliability finding rather than a performance cl
 
 This does not establish that motion is irrelevant. Potential explanations include limited sample size, assignment switching, noisy derivative features, insufficient offensive context, and genuine situation-specific effects. These explanations must be tested rather than selected after seeing the result.
 
-## Negative control
+## Small-cluster and conditional inference
 
-![Temporal-alignment negative control](figures/negative_control.png)
+![Small-cluster and conditional checks](figures/inference_checks.png)
 
-In 200 negative-control repetitions, the six temporal feature columns were jointly permuted among shots within each game. Static features, outcomes, sample sizes, and game membership were left unchanged.
+The exact two-sided sign-flip test over all 2^10 assignments gives p = 0.613. This is preferred to relying only on a bootstrap percentile interval with ten clusters.
 
-- observed aligned temporal-minus-static log-loss difference: **−0.00125**;
-- mean permuted difference: **+0.00227**;
-- 95% permutation range: **[−0.00116, 0.00487]**;
-- fraction of permuted runs as favorable as the observed alignment: **0.025**.
+The original whole-vector permutation is now classified as a naive diagnostic because it destroys the dependence between temporal features and static release context. A stricter control first residualizes all temporal features against static/context features with cross-fitted quadratic Ridge models, then jointly permutes residual vectors within game.
 
-This creates an important but deliberately cautious distinction: the aligned temporal variables appear to contain more shot-specific information than randomly mismatched temporal variables, yet the resulting model improvement remains too heterogeneous across the ten games for its paired game-level interval to exclude zero. Evidence of temporal signal is therefore stronger than evidence of a stable operational performance gain.
+- observed temporal-minus-static difference: **−0.00125**;
+- conditional null mean: **+0.00052**;
+- conditional 95% range: **[−0.00411, 0.00376]**;
+- fraction of conditional permutations at least as favorable: **0.155**.
+
+The earlier 0.025 fraction is not used as evidence. Under the better-matched null, this sample does not establish incremental temporal information beyond static/context features.
 
 ## Next analysis
 

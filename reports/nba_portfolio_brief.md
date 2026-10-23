@@ -17,7 +17,7 @@ Built an end-to-end, reproducible analysis of 25 Hz professional basketball trac
 
 ## Résumé bullet
 
-Built a reproducible 25 Hz professional-basketball tracking pipeline covering 1,459 shots; audited event alignment and tracking quality, developed temporal and multiplayer defensive features, and evaluated them with leave-one-game-out validation, cluster bootstrap uncertainty, permutation controls, and an external Shot Quality benchmark.
+Built a reproducible 25 Hz professional-basketball tracking pipeline covering 1,459 shots; audited event alignment and defender identity, propagated vendor position-error bounds, and evaluated temporal and multiplayer defensive features with leave-one-game-out validation, exact sign flips, conditional-residual permutation, nested tuning, and an external Shot Quality reference.
 
 ## Interview discussion point
 

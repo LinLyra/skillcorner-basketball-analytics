@@ -1,138 +1,82 @@
-# SkillCorner Basketball Analytics Lab
+# Beyond the Snapshot
 
-独立的 SkillCorner 篮球追踪数据研究项目。它不依赖、不导入、也不修改 LYKON 的 IMU/UWB 数据管道。
+**When does temporal defensive context improve basketball shot quality?**
 
-## 当前范围
+This open study tests a tempting tracking-data claim: that the defender's movement before release predicts shot outcome better than the release snapshot alone. It uses all ten complete 25 Hz professional games in SkillCorner Open Data Basketball, strict leave-one-game-out (LOGO) validation, small-cluster inference, position-error propagation, and possession-level case studies.
 
-当前主线是 **Beyond the Snapshot**：检验投篮前动态防守信息，相比出手瞬间的静态防守距离，是否提供稳定且可信的跨比赛增量价值。
+![Revision evidence summary](reports/figures/revision_summary.png)
 
-已完成的研究基础设施：
+## Result
 
-1. 读取 `.jsonl` / `.jsonl.gz` tracking；
-2. 将嵌套球员和篮球对象展开成长表；
-3. 将英尺统一转换为米，同时保留原始质量字段；
-4. 读取 Dynamic Events bundle；
-5. 检查空帧、检测覆盖率、预测误差和每帧实体数量；
-6. 按事件帧提取 tracking episode；
-7. 提供 separation、closing speed 等无业务假设的几何原语。
+Of 1,459 shots, 1,433 have usable shooter–defender trajectories and 1,211 non-fouled shots pass a 5 cm event/tracking alignment audit. Adding one second of closing speed, separation gain, pressure duration, and distance history changes mean LOGO log loss from 0.6646 to 0.6633. The improvement is small and uncertain: Δ = −0.00125, game-cluster 95% interval [−0.00586, 0.00316], exact two-sided sign-flip p = 0.613.
 
-暂不包含：LYKON、IMU、UWB、复杂 GNN、EPV，以及未经验证的综合 Pressure Score。
+The original unconditional permutation looked favorable, but it broke the relationship between temporal variables and release distance. After cross-fitted residualization on static/context features, 15.5% of within-game conditional permutations perform at least as well as observed. Nested tuning and a monotonic nonlinear tree reach the same substantive conclusion: no stable incremental temporal value is detected in these ten games.
 
-## 首轮完整实验
+The most actionable finding is definitional. A frame-wise “nearest defender” changes identity during 36.0% of one-second windows. Across 1,209 common predictions, fixed-release and frame-nearest policies correlate at 0.988, yet 68 shots differ by more than five probability points. When identity switches, the mean absolute prediction difference is 2.56 points versus 0.75 without a switch.
 
-固定版本数据已经覆盖全部 10 场比赛。首轮结果包含 1,459 次投篮，严格筛选后的主分析队列为 1,211 次非犯规且事件/坐标距离对齐的投篮。
+![Defender-policy case studies](reports/figures/defender_policy_cases.png)
 
-```bash
-PYTHONPATH=src python scripts/run_study.py
-PYTHONPATH=src python scripts/run_robustness.py
-PYTHONPATH=src python scripts/run_subgroup_analysis.py
-PYTHONPATH=src python scripts/run_smoothing_sensitivity.py
-PYTHONPATH=src python scripts/run_spatial_geometry.py
-PYTHONPATH=src python scripts/run_official_benchmark.py
-MPLCONFIGDIR=/tmp/sc-mpl PYTHONPATH=src python scripts/run_negative_control.py
-PYTHONPATH=src python scripts/render_results.py
-PYTHONPATH=src python scripts/render_robustness.py
-PYTHONPATH=src python scripts/render_disagreement_cases.py
-PYTHONPATH=src python scripts/render_final_summary.py
-MPLCONFIGDIR=/tmp/sc-mpl PYTHONPATH=src python scripts/animate_disagreement.py
-```
+SkillCorner Shot Quality has mean log loss 0.6101, numerically stronger than the open models. It is treated only as an external production reference: its training size, features, and possible overlap with these games are unknown, so this is not a fair head-to-head model comparison.
 
-初步发现：1 秒动态窗口相对静态防守基线只有很小、跨比赛不稳定的提升，2 秒窗口平均表现更差。完整说明见 [reports/preliminary_results.md](reports/preliminary_results.md)，预先固定的评估规则见 [docs/evaluation_protocol.md](docs/evaluation_protocol.md)。
+## Why this matters
 
-鲁棒性结果与模型分歧案例见 [reports/robustness_results.md](reports/robustness_results.md)。
-篮球情境分层与平滑敏感性见 [reports/basketball_context_results.md](reports/basketball_context_results.md)。
+This is not a new proprietary-looking pressure score. It is a reproducible audit showing when tracking definitions change the basketball question being measured. The compatible interval suggests this experiment would likely have exposed an average improvement larger than roughly 0.0059 log-loss units, subject to the severe limitation of only ten game clusters.
 
-最终研究稿见 [reports/final_report.md](reports/final_report.md)，比赛提交摘要与一分钟讲稿见 [reports/analytics_cup_submission.md](reports/analytics_cup_submission.md)。
+The repository contributes:
 
-完整重现实验与发布校验：
+- release-frame event/tracking alignment checks;
+- fixed-release and frame-nearest defender trajectories;
+- exact sign-flip and conditional-residual permutation inference;
+- nested LOGO tuned logistic and monotonic tree benchmarks;
+- Monte Carlo propagation of `predError` under a documented sensitivity assumption;
+- replay-ready possession tables and three defender-policy case studies;
+- a reusable `sc-basketball` command-line interface.
+
+## Reproduce
+
+Python 3.10+ is required. The raw files are intentionally not committed. Download the official data version pinned in `datasets.lock.json`, then:
 
 ```bash
-bash scripts/reproduce_all.sh
-```
-
-## 数据来源
-
-数据不提交到本仓库。官方源和研究参考版本固定在 `sources.lock.json`，首场数据文件固定在 `datasets.lock.json`。
-
-- <https://github.com/SkillCorner/opendata-basketball>
-
-获取并校验首场真实数据：
-
-```bash
-python scripts/fetch_official_game.py --game-id 114243
-```
-
-只验证已经下载的数据：
-
-```bash
-python scripts/fetch_official_game.py --game-id 114243 --verify-only
-```
-
-文件保存在：
-
-```text
-data/raw/<game_id>/
-  <game_id>_game_data.json
-  <game_id>_dynamic_events.json
-  <game_id>_tracking_data.jsonl.gz
-```
-
-## 安装与验证
-
-```bash
-cd skillcorner-basketball-analytics
 python -m venv .venv
 source .venv/bin/activate
-pip install -e '.[dev]'
-pytest
+pip install -e '.[dev,analysis]'
+./scripts/reproduce_all.sh
 ```
 
-检查一场比赛：
+The full run executes tests, rebuilds all cohorts and models, performs 200 conditional permutations and 30 position-error Monte Carlo draws, renders figures, and validates release invariants. For a fast software check:
 
 ```bash
-sc-basketball inspect \
-  data/raw/114243/114243_tracking_data.jsonl.gz \
-  --game-id 114243 \
-  --output outputs/114243_quality.json
+pytest -q
+python scripts/validate_release.py
 ```
 
-展开并保存标准表：
+Reusable CLI examples:
 
 ```bash
-sc-basketball normalize \
-  data/raw/114243/114243_tracking_data.jsonl.gz \
-  --game-id 114243 \
-  --output-dir data/interim/114243
+sc-basketball validate-shots TRACKING.jsonl.gz EVENTS.json \
+  --game-id GAME_ID --output-dir audit
+
+sc-basketball build-shot-features TRACKING.jsonl.gz EVENTS.json \
+  --game-id GAME_ID --window-seconds 1 \
+  --defender-mode frame_nearest --output features.csv
 ```
 
-## 数据产物
+## Study map
 
-`frames.csv`：一帧一行。
+- [Full report](reports/final_report.md)
+- [Cup abstract and 60-second script](reports/analytics_cup_submission.md)
+- [Robustness results](reports/robustness_results.md)
+- [Data contract](docs/data_contract.md)
+- [Literature gap matrix](docs/literature_gap_matrix.md)
+- [Evaluation protocol](docs/evaluation_protocol.md)
+- [NBA portfolio brief](reports/nba_portfolio_brief.md)
 
-```text
-game_id, frame_idx, wall_clock_ms, period, game_clock_s,
-shot_clock_s, game_clock_stopped
-```
+## Interpretation and limits
 
-`entities.csv`：每帧每个实体一行。
+The result does **not** show that defensive motion is irrelevant. It shows that these simple summaries, with this public sample, do not earn a stable incremental-performance claim. Binary outcomes are noisy; only ten full games are public; broadcast-derived tracking contains extrapolated positions; orientation, contest height, tactical assignment, screens, and player effects are incompletely observed. Subgroup analyses are exploratory.
 
-```text
-game_id, frame_idx, wall_clock_ms, period, entity_type,
-team_side, player_id, jersey, x_m, y_m, z_m, speed_mps,
-is_detected, pred_error_m
-```
+`predError` is documented as a 90% radial bound, not a Gaussian standard deviation. Monte Carlo sensitivity explicitly assumes independent isotropic Gaussian x/y error and converts the radius using `sigma = predError / sqrt(-2 log(0.1))`. It is an assumption audit, not a claim about SkillCorner's proprietary error distribution.
 
-## 研究里程碑
+## License and attribution
 
-- M0：数据合同、解析、质量报告和测试；
-- M1：球场回放与事件对齐；
-- M2：投篮前窗口及防守距离复算；
-- M3：1v1 separation、closing speed、defender recovery；
-- M4：可解释 Shot Quality baseline；
-- M5：反事实空间分析和交互式展示。
-
-详细范围见 [docs/research_plan.md](docs/research_plan.md)。
-
-## 外部参考
-
-外部仓库只读存放在被 Git 忽略的 `external/`，不会进入核心包。选择依据、审阅重点和风险见 [docs/reference_review.md](docs/reference_review.md)。
+Code is released under the [MIT License](LICENSE.md). Data remains governed by SkillCorner's terms and is not redistributed. This independent project is not affiliated with or endorsed by SkillCorner, PySport, the ACB, or any team.

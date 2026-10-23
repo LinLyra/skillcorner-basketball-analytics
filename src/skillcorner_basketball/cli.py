@@ -40,6 +40,14 @@ def _parser() -> argparse.ArgumentParser:
     features.add_argument("--game-id", required=True)
     features.add_argument("--output", required=True)
     features.add_argument("--window-seconds", type=float, default=2.0)
+    features.add_argument(
+        "--defender-mode", choices=["fixed_release", "frame_nearest"], default="fixed_release"
+    )
+    features.add_argument("--smoothing-frames", type=int, default=1)
+    features.add_argument(
+        "--coordinate-noise-seed", type=int,
+        help="Propagate predError under the documented isotropic-Gaussian sensitivity model",
+    )
     return parser
 
 
@@ -64,6 +72,9 @@ def main() -> None:
             entities,
             game_id=args.game_id,
             window_seconds=args.window_seconds,
+            defender_mode=args.defender_mode,
+            smoothing_frames=args.smoothing_frames,
+            coordinate_noise_seed=args.coordinate_noise_seed,
         )
         output = Path(args.output)
         output.parent.mkdir(parents=True, exist_ok=True)

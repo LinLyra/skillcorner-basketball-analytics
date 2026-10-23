@@ -2,15 +2,15 @@
 
 ## Evaluating the reliability and incremental value of temporal defensive context in professional basketball
 
-![Final evidence summary](figures/final_summary.png)
+![Revised evidence summary](figures/revision_summary.png)
 
 ## Abstract
 
-Basketball shot-quality analyses often represent defense using the nearest defender at release. Tracking data makes richer temporal descriptions possible, but additional motion variables may be noisy, unstable across games, or redundant with mature proprietary models. This study uses the ten complete 25 Hz professional games in SkillCorner Open Data Basketball to test whether 0.5-, 1-, and 2-second pre-release defensive histories improve out-of-game shot-outcome probabilities beyond location, shot context, and release distance. The study explicitly audits event/tracking alignment, compares fixed and frame-wise-nearest defender definitions, propagates the analysis through high-quality tracking subsets, applies trajectory smoothing, uses within-game permutation controls, and benchmarks against SkillCorner Shot Quality.
+Basketball shot-quality analyses often represent defense using the nearest defender at release. Tracking data makes richer temporal descriptions possible, but additional motion variables may be noisy, unstable across games, or redundant with mature production models. This study uses the ten complete 25 Hz professional games in SkillCorner Open Data Basketball to test whether 0.5-, 1-, and 2-second pre-release defensive histories improve out-of-game shot-outcome probabilities beyond location, shot context, and release distance. It audits event alignment, compares defender definitions, propagates vendor position-error bounds, uses exact small-cluster inference and conditional negative controls, tests nested tuned linear and monotonic nonlinear models, and treats SkillCorner Shot Quality as an external reference rather than a like-for-like competitor.
 
-Among 1,459 shots, 1,433 had usable shooter–defender trajectories and 1,211 non-fouled shots met the primary event/tracking alignment rule. A one-second temporal model improved mean leave-one-game-out log loss from 0.6646 to 0.6633, but its paired game-cluster 95% interval crossed zero (difference −0.00125, 95% interval [−0.00586, 0.00316]). The result remained inconclusive under alternative defender definitions, high-quality tracking filters, smoothing, and basketball-context subgroups. Correctly aligned temporal features nevertheless outperformed 97.5% of within-game permutation controls, indicating shot-specific temporal signal without stable operational gain. A larger multiplayer geometry model generalized worse, while official SkillCorner Shot Quality was substantially stronger (mean log loss 0.6101). Adding the study’s temporal summaries to the official score did not improve it.
+Among 1,459 shots, 1,433 had usable shooter–defender trajectories and 1,211 non-fouled shots met the primary event/tracking alignment rule. A one-second temporal model improved mean leave-one-game-out log loss from 0.6646 to 0.6633, but its paired game-cluster interval crossed zero (difference −0.00125, 95% bootstrap interval [−0.00586, 0.00316]); the exact two-sided sign-flip p-value was 0.613. After cross-fitted removal of information predictable from static/context features, 15.5% of within-game residual permutations performed at least as well as the observed data. Thus the earlier unconditional-permutation result does not survive a fairer conditional control. The compatible range places improvements larger than about 0.0059 log-loss units outside this bootstrap interval, while acknowledging that ten clusters limit precision. Alternative defender definitions, quality filters, smoothing, subgroups, nested tuning, and a monotonic tree do not establish incremental temporal value. Frame-wise defender identity changes in 36% of one-second windows; those cases change predicted make probability by 2.56 percentage points on average versus 0.75 when identity is stable. Position-error Monte Carlo sensitivity is reported below.
 
-The main contribution is therefore a reproducible reliability result: simple temporal separation summaries contain information, but more tracking-derived features do not automatically produce robust cross-game improvement. Defender identity, event alignment, tracking quality, and external benchmarking materially change the interpretation.
+The main contribution is therefore a reproducible boundary and an audit protocol: this sample does not support a stable incremental-value claim for simple temporal separation summaries. Defender identity, event alignment, position uncertainty, model class, and benchmark provenance materially change the interpretation.
 
 ## Research questions
 
@@ -33,7 +33,7 @@ Data audit:
 - 1,211 non-fouled, aligned shots in the primary cohort;
 - 44.9% made-shot rate.
 
-The 0.05 m rule is an alignment check, not a claim about the absolute accuracy of broadcast tracking. `predError` is retained as a vendor-provided 90% error radius and is not treated as a Gaussian standard deviation.
+The 0.05 m rule is an alignment check, not a claim about the absolute accuracy of broadcast tracking. `predError` is a vendor-provided 90% error radius, not a Gaussian standard deviation. For sensitivity analysis only, it is converted to an axis standard deviation under an explicit isotropic-Gaussian assumption: `sigma = predError / sqrt(-2 log(0.1))`.
 
 ## Models
 
@@ -48,7 +48,7 @@ M0–M5 use regularized logistic regression and fold-local preprocessing. The go
 
 ## Validation
 
-Every learned prediction is generated by leave-one-game-out validation. Preprocessing is fitted only on the nine training games. Primary metrics are log loss and Brier score, with AUC and calibration as secondary diagnostics. Differences are paired by held-out game and uncertainty is estimated with 20,000 game-cluster bootstrap resamples.
+Every learned prediction is generated by leave-one-game-out validation. Preprocessing is fitted only on the nine training games. Primary metrics are log loss and Brier score, with AUC and calibration as secondary diagnostics. The primary descriptive interval uses 20,000 paired game-cluster bootstrap resamples; because there are only ten clusters, it is supplemented by all 2^10 exact sign flips. Conditional permutation first predicts each temporal feature from static/context variables in cross-fitting, then permutes the residual vector within game. Model-class sensitivity uses nested LOGO tuning and a small monotonic histogram-gradient tree.
 
 ## Results
 
@@ -64,6 +64,8 @@ Every learned prediction is generated by leave-one-game-out validation. Preproce
 
 One second is the strongest tested temporal window. Two seconds is worse than the static model, consistent with older history adding assignment changes, irrelevant movement, or noise.
 
+The out-of-game training-rate baseline has mean log loss 0.6899. Relative to it, M0 improves by 0.0222, M1 by 0.0253, and M2 by 0.0266. The temporal block therefore contributes only 0.00125 of the open model's total 0.0266 gain. The external official score improves by 0.0798 versus the same reference—about three times the total open-model gain—but the provenance caveat below prevents treating this as a fair modeling contest.
+
 The one-second improvement over M1 is small and heterogeneous: Δ log loss −0.00125, 95% interval [−0.00586, 0.00316], with improvement in six of ten games.
 
 ### Robustness
@@ -72,9 +74,23 @@ None of four defender-definition/tracking-quality combinations excludes zero. Fi
 
 Under frame-wise nearest-defender tracking, defender identity changes during the one-second history for 525 of 1,458 valid trajectories (36.0%). A metric that silently switches players is therefore not measuring the same defensive assignment as a fixed-defender trajectory.
 
-### Negative control
+Across 1,209 common out-of-game predictions, fixed and frame-nearest policies correlate at 0.988, yet their mean absolute difference is 0.0141 and the 95th percentile is 0.0522; 68 shots differ by more than five percentage points. When identity switches, mean absolute difference rises to 0.0256, compared with 0.0075 without a switch. The consequence is concentrated rather than merely semantic.
 
-Within each game, temporal feature vectors were jointly permuted across shots 200 times while static context, outcomes, and game membership remained fixed. The observed aligned result (−0.00125) was better than 97.5% of permuted runs. This supports the presence of shot-specific temporal information, but it does not override the wide between-game uncertainty.
+![Defender-policy case studies](figures/defender_policy_cases.png)
+
+### Small-cluster inference and conditional negative control
+
+The exact two-sided sign-flip p-value for the ten game-level differences is 0.613 (one-sided 0.307). A naive whole-vector permutation produced an apparently strong result, but it also destroyed dependence between temporal variables and release distance. It is retained only as a diagnostic. Under the stricter cross-fitted residual permutation, the null mean is +0.00052, the 95% range is [−0.00411, 0.00376], and 15.5% of permutations are at least as favorable as the observed −0.00125. There is therefore no reliable evidence here that the temporal block adds information beyond static/context variables.
+
+![Exact sign flips and conditional permutation](figures/inference_checks.png)
+
+### Model-class sensitivity
+
+Nested LOGO tuning gives log loss 0.6631 for static and 0.6620 for temporal logistic regression (difference −0.00119 [−0.00336, 0.00123]). A monotonic nonlinear tree improves absolute fit (0.6487 static) but becomes slightly worse with temporal variables (0.6495; difference +0.00081 [−0.00295, 0.00379]). The incremental null result is not explained by the original fixed regularization or linear-additive form.
+
+### Position-error propagation
+
+Thirty Monte Carlo reconstructions perturb shooter and defender x/y coordinates independently under the documented isotropic-Gaussian interpretation of the vendor's 90% radial `predError`. The primary 1,211-shot cohort is held fixed so the experiment measures feature and prediction sensitivity rather than selection changes. Across draws, mean M2−M1 log-loss difference is −0.00085; the Monte Carlo 2.5th–97.5th percentile range is [−0.00334, 0.00129], and 23/30 draws favor M2. Position uncertainty attenuates but does not qualitatively reverse the conclusion: the incremental effect remains small and crosses zero across plausible reconstructions. This range describes sensitivity to the assumed measurement-error model, not a confidence interval for the population effect.
 
 ### Basketball contexts
 
@@ -93,21 +109,22 @@ M3 produces mean log loss 0.6651, worse than both M1 and M2. The added feature b
 | M4 official recalibrated | 0.6129 | 0.2127 | 0.7117 |
 | M5 official plus temporal | 0.6147 | 0.2135 | 0.7062 |
 
-Official Shot Quality is decisively stronger than the open reconstruction. M2 is worse than the official benchmark in all ten games, with Δ log loss +0.0532 [0.0365, 0.0697]. Adding the simple temporal block to the official score does not improve it.
+Official Shot Quality is numerically stronger than the open reconstruction in all ten games, with Δ log loss +0.0532 [0.0365, 0.0697]. This is not a fair model-development contest: its training data, feature set, and possible overlap with these ten games are unknown and may be much larger. It is therefore an external production reference. Within this sample, adding the simple temporal block to a recalibration of that score does not produce a detectable improvement; this is not evidence that the dynamic information has zero value.
 
 ## Interpretation
 
 The study supports three conclusions:
 
 1. Release-time defender distance adds useful information to a basic open model.
-2. Correctly aligned temporal summaries contain some shot-specific signal, but their average incremental benefit is too small and heterogeneous for a stable performance claim.
-3. Mature Shot Quality modeling captures substantially more information than distance histories alone; adding many geometric variables without sufficient sample size or structure can reduce generalization.
+2. The observed temporal gain is small, heterogeneous, non-significant under exact sign flips, and not exceptional under conditional permutation.
+3. A richer external Shot Quality score is numerically much stronger, but unknown training provenance prevents a like-for-like inference; adding many geometric variables without sufficient sample size or structure can reduce generalization.
 
 ## Limitations
 
 - Only ten complete tracking games are public.
 - Outcomes are binary and intrinsically noisy; individual shooter effects cannot be estimated reliably.
 - Tracking is derived from broadcast video and contains extrapolated positions.
+- The `predError` sensitivity model assumes independent isotropic Gaussian errors across players and frames; real tracking errors may be directional and temporally correlated.
 - Official Shot Quality is a strong but not fully reconstructable benchmark, so this study evaluates it rather than claiming a like-for-like replication.
 - Orientation, limb position, contest height, screen navigation, and tactical intent are unavailable.
 - Subgroup analyses are exploratory and underpowered.

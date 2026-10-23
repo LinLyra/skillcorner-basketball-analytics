@@ -32,6 +32,8 @@ def build_shot_temporal_features(
     pressure_distance_m: float = 1.5,
     defender_mode: str = "fixed_release",
     smoothing_frames: int = 1,
+    coordinate_noise_seed: int | None = None,
+    pred_error_coverage: float = 0.90,
 ) -> pd.DataFrame:
     """Build one analysis row per shot from a defender-distance trajectory.
 
@@ -55,6 +57,13 @@ def build_shot_temporal_features(
         raise ValueError("defender_mode must be 'fixed_release' or 'frame_nearest'")
     if smoothing_frames < 1 or smoothing_frames % 2 == 0:
         raise ValueError("smoothing_frames must be a positive odd integer")
+    if not 0 < pred_error_coverage < 1:
+        raise ValueError("pred_error_coverage must be between zero and one")
+    rng = np.random.default_rng(coordinate_noise_seed) if coordinate_noise_seed is not None else None
+    # SkillCorner describes predError as a radial coverage bound.  Under the
+    # explicit isotropic-Gaussian sensitivity model below, radius R satisfies
+    # P(||error|| <= R) = coverage for a Rayleigh-distributed radius.
+    radius_to_axis_sd = np.sqrt(-2.0 * np.log(1.0 - pred_error_coverage))
 
     players = entities[entities["entity_type"] == "player"].copy()
     players["player_key"] = players["player_id"].map(_normalise_id)
@@ -187,6 +196,13 @@ def build_shot_temporal_features(
         if trajectory.empty:
             rows.append(base)
             continue
+
+        if rng is not None:
+            for prefix in ("shooter", "defender"):
+                error = trajectory[f"{prefix}_pred_error_m"].fillna(0).clip(lower=0)
+                axis_sd = error.to_numpy(dtype=float) / radius_to_axis_sd
+                trajectory[f"{prefix}_x_m"] += rng.normal(0.0, axis_sd)
+                trajectory[f"{prefix}_y_m"] += rng.normal(0.0, axis_sd)
 
         raw_separation = np.asarray(np.hypot(
             trajectory["defender_x_m"] - trajectory["shooter_x_m"],
