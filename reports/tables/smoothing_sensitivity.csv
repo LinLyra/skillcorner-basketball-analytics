@@ -1,0 +1,4 @@
+metric,model_a,model_b,game_count,mean_difference,ci95_low,ci95_high,games_favoring_a,smoothing_frames
+log_loss,M2_temporal_defense,M1_static_defense,10,-0.001140064023807097,-0.00563420787816199,0.0031403555974551575,6,5
+brier,M2_temporal_defense,M1_static_defense,10,-0.0005316294442171243,-0.002561787769060242,0.001459553246744742,6,5
+auc,M2_temporal_defense,M1_static_defense,10,0.002268182970704835,-0.005802676804716493,0.010913042950489222,5,5

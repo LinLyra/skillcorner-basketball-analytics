@@ -1,0 +1,10 @@
+metric,model_a,model_b,game_count,mean_difference,ci95_low,ci95_high,games_favoring_a
+log_loss,M5_official_plus_temporal,M4_official_recalibrated,10,0.0018385326980648541,-0.0006259425343606459,0.004664040408310013,4
+brier,M5_official_plus_temporal,M4_official_recalibrated,10,0.0007920518332890369,-0.00025586372673015007,0.0019209328704183131,3
+auc,M5_official_plus_temporal,M4_official_recalibrated,10,-0.00546784729905776,-0.01367727549944709,0.0018972471507547287,4
+log_loss,M5_official_plus_temporal,Official_Shot_Quality_direct,10,0.004577819988922527,0.0007973179906249969,0.00903008047561051,3
+brier,M5_official_plus_temporal,Official_Shot_Quality_direct,10,0.0012443199781089985,-0.00013890195775010826,0.00287340644798425,4
+auc,M5_official_plus_temporal,Official_Shot_Quality_direct,10,-0.00546784729905776,-0.01367727549944709,0.0018972471507547287,4
+log_loss,M2_temporal_defense,Official_Shot_Quality_direct,10,0.05316865555109401,0.03650924187920008,0.06964980703531756,0
+brier,M2_temporal_defense,Official_Shot_Quality_direct,10,0.02268960772667416,0.015414777923182866,0.029714115885480664,0
+auc,M2_temporal_defense,Official_Shot_Quality_direct,10,-0.07833979790467624,-0.11011546236719157,-0.04259223729753606,1

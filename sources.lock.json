@@ -1,0 +1,37 @@
+{
+  "generated_on": "2026-10-09",
+  "sources": [
+    {
+      "role": "official_data",
+      "name": "SkillCorner Open Data Basketball",
+      "url": "https://github.com/SkillCorner/opendata-basketball.git",
+      "commit": "4bbed2e35e8fdd2cf083e8c8b280b3e5381a2c66",
+      "local_path": "external/official-opendata-basketball",
+      "license": "MIT"
+    },
+    {
+      "role": "method_reference",
+      "name": "Off Ball Run Decision Making and Route Optimization",
+      "url": "https://github.com/zcochran4275/skill_corner_analytics_cup_tracking_data_research.git",
+      "commit": "3233fc55ea29bc64ef86d4a8aa71dcab0197ea8b",
+      "local_path": "external/references/off-ball-route-optimization",
+      "license": "MIT"
+    },
+    {
+      "role": "method_reference",
+      "name": "Forecasting Expected Threat from Geometric Configurations",
+      "url": "https://github.com/pdiagne/analytics_cup_research_MD.git",
+      "commit": "235f61ffb05cf72454d2b24c90151bbb2f12acd6",
+      "local_path": "external/references/geometric-xthreat",
+      "license": "MIT"
+    },
+    {
+      "role": "product_reference",
+      "name": "Football Match Intelligence",
+      "url": "https://github.com/DataKnight1/football-match-intelligence.git",
+      "commit": "630d2a49f2f33605e4d92d9237e75e70bb80ce52",
+      "local_path": "external/references/football-match-intelligence",
+      "license": "MIT"
+    }
+  ]
+}
