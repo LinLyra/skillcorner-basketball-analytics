@@ -1,0 +1,17 @@
+{
+  "observed_delta_log_loss": -0.0012537284698425522,
+  "exact_sign_flip_two_sided_p": 0.61328125,
+  "exact_sign_flip_one_sided_p": 0.306640625,
+  "sign_flip_permutations": 1024,
+  "exact_sign_flip_ci95_low": -0.006898965939894898,
+  "exact_sign_flip_ci95_high": 0.004276410883924879,
+  "exact_sign_flip_ci_grid_step": 6.498823461181802e-07,
+  "exact_sign_flip_ci_contiguous": true,
+  "exact_sign_flip_ci_method": "grid inversion of the exact two-sided sign-flip test for a symmetric common location shift",
+  "conditional_null_mean": 0.000520267589280335,
+  "conditional_null_2.5pct": -0.004108809248295985,
+  "conditional_null_97.5pct": 0.0037590612197039132,
+  "conditional_fraction_as_good_or_better": 0.155,
+  "conditional_repetitions": 200,
+  "residualization": "cross-fitted quadratic Ridge on static/context features; residual vectors permuted jointly within game"
+}

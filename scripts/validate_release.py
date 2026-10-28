@@ -38,6 +38,7 @@ def main() -> None:
         "outputs/nested_models/paired_bootstrap.csv",
         "outputs/pred_error_mc/summary.json",
         "outputs/defender_policy/prediction_summary.json",
+        "outputs/robustness/policy_comparison_common_bootstrap.csv",
     ]
     for path in required:
         require(path)
@@ -65,8 +66,24 @@ def main() -> None:
     inference = json.loads(require("outputs/inference_checks/summary.json").read_text())
     assert inference["exact_sign_flip_two_sided_p"] > 0.05
     assert inference["conditional_fraction_as_good_or_better"] > 0.05
+    assert inference["exact_sign_flip_ci95_low"] < -0.006
+    assert inference["exact_sign_flip_ci95_high"] > 0
     policy = json.loads(require("outputs/defender_policy/prediction_summary.json").read_text())
     assert policy["mean_abs_difference_switched"] > policy["mean_abs_difference_not_switched"]
+    assert (
+        policy["hysteresis_0_3m_switch_rate_valid_trajectories"]
+        < policy["nearest_switch_rate_valid_trajectories"]
+    )
+    policy_comparison = pd.read_csv(
+        require("outputs/robustness/policy_comparison_common_bootstrap.csv")
+    )
+    policy_logloss = policy_comparison[policy_comparison["metric"] == "log_loss"]
+    assert ((policy_logloss["ci95_low"] < 0) & (policy_logloss["ci95_high"] > 0)).all()
+    mc = json.loads(require("outputs/pred_error_mc/summary.json").read_text())
+    assert mc["draws"] >= 200
+    readme = require("README.md").read_text()
+    assert len(readme.split()) <= 1_000
+    assert readme.count("![") <= 2
     print("Release validation passed: 10 games, 1,459 shots, 1,211-shot primary cohort.")
 
 

@@ -3,6 +3,7 @@ import json
 
 import numpy as np
 
+from skillcorner_basketball.audit import AuditConfig, audit_game
 from skillcorner_basketball.episodes import extract_shot_window
 from skillcorner_basketball.features import build_shot_temporal_features
 from skillcorner_basketball.geometry import closing_speed, distance, separation_gain
@@ -237,6 +238,35 @@ def test_frame_nearest_defender_can_switch_identity(tmp_path):
     assert features.iloc[0]["status"] == "ok"
     assert features.iloc[0]["unique_defenders_in_window"] == 2
     assert np.isclose(features.iloc[0]["release_distance_m"], 0.9144)
+
+
+def test_hysteresis_suppresses_near_tie_switches_and_audit_api(tmp_path):
+    tracking = tmp_path / "tracking.jsonl.gz"
+    with gzip.open(tracking, "wt", encoding="utf-8") as handle:
+        for frame_idx in range(6):
+            frame = _frame(frame_idx)
+            frame["homePlayers"][0]["xyz"] = [0.0, 0.0, 0.0]
+            frame["awayPlayers"] = [
+                {"xyz": [6.4 if frame_idx % 2 else 6.6, 0, 0], "playerId": 202,
+                 "isDetected": 1, "predError": .2},
+                {"xyz": [6.6 if frame_idx % 2 else 6.4, 0, 0], "playerId": 203,
+                 "isDetected": 1, "predError": .2},
+            ]
+            handle.write(json.dumps(frame) + "\n")
+    events = tmp_path / "events.json"
+    events.write_text(json.dumps({"shots": [{
+        "id": "shot-1", "startFrame": 5, "shooterId": 101,
+        "closestDefId": 202, "closestDefDist": 6.4, "outcome": False,
+    }]}))
+    result = audit_game(
+        tracking, events, game_id=42,
+        config=AuditConfig(window_seconds=.2, defender_switch_margin_m=.3),
+    )
+    assert result.policy_features["frame_nearest"].iloc[0]["unique_defenders_in_window"] == 2
+    assert result.policy_features["frame_nearest_hysteresis"].iloc[0]["unique_defenders_in_window"] == 1
+    output = tmp_path / "audit"
+    result.write(output)
+    assert (output / "audit_summary.json").exists()
 
 
 def test_paired_game_bootstrap_reports_direction():

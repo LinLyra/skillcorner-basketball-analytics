@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skillcorner-basketball-analytics"
-version = "0.1.0"
-description = "Independent research scaffold for SkillCorner open basketball tracking data"
+version = "0.2.0"
+description = "Reproducible alignment, defender-policy, and uncertainty audits for SkillCorner open basketball tracking data"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",

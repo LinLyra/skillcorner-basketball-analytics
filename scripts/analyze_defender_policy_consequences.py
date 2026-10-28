@@ -33,6 +33,9 @@ def main() -> None:
 
     fixed = pd.read_csv(args.study_dir / "shot_features_1s.csv")
     nearest = pd.read_csv(args.robustness_dir / "shot_features_frame_nearest_1s.csv")
+    hysteresis = pd.read_csv(
+        args.robustness_dir / "shot_features_frame_nearest_hysteresis_0_3m_1s.csv"
+    )
     base_cols = ["game_id", "shot_id", "outcome", "release_frame", "shooter_id", "defender_id"]
     common = fixed[base_cols + FEATURES].merge(
         nearest[["game_id", "shot_id", "unique_defenders_in_window"] + FEATURES],
@@ -68,6 +71,11 @@ def main() -> None:
     wide["defender_switched"] = wide["unique_defenders_in_window"] > 1
     wide.to_csv(args.output_dir / "shot_consequences.csv", index=False)
 
+    hysteresis_valid = hysteresis[hysteresis["status"] == "ok"]
+    common_policy_scores = pd.read_csv(
+        args.robustness_dir / "policy_comparison_common_scores.csv"
+    )
+    mean_policy_scores = common_policy_scores.groupby("model")[["log_loss", "brier", "auc"]].mean()
     prediction_summary = {
         "common_predictions": int(len(wide)),
         "pearson_probability": float(wide["fixed_release"].corr(wide["frame_nearest"])),
@@ -77,6 +85,18 @@ def main() -> None:
         "switch_rate": float(wide["defender_switched"].mean()),
         "mean_abs_difference_switched": float(wide.loc[wide["defender_switched"], "absolute_probability_difference"].mean()),
         "mean_abs_difference_not_switched": float(wide.loc[~wide["defender_switched"], "absolute_probability_difference"].mean()),
+        "nearest_switch_rate_valid_trajectories": float(
+            (nearest.loc[nearest["status"] == "ok", "unique_defenders_in_window"] > 1).mean()
+        ),
+        "hysteresis_0_3m_switch_rate_valid_trajectories": float(
+            (hysteresis_valid["unique_defenders_in_window"] > 1).mean()
+        ),
+        "common_cohort_mean_scores": mean_policy_scores.to_dict(orient="index"),
+        "interpretation": (
+            "Descriptive sensitivity only: switching is not randomized and does not cause the "
+            "prediction differences. On the identical held-out cohort, all policy log-loss "
+            "differences are near zero and their paired game intervals cross zero."
+        ),
     }
     (args.output_dir / "prediction_summary.json").write_text(json.dumps(prediction_summary, indent=2) + "\n")
 

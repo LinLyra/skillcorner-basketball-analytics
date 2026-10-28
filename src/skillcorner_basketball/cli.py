@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from .audit import AuditConfig, audit_game
 from .io import load_dynamic_events, load_tracking
 from .features import build_shot_temporal_features
 from .quality import tracking_quality_report
@@ -41,18 +42,46 @@ def _parser() -> argparse.ArgumentParser:
     features.add_argument("--output", required=True)
     features.add_argument("--window-seconds", type=float, default=2.0)
     features.add_argument(
-        "--defender-mode", choices=["fixed_release", "frame_nearest"], default="fixed_release"
+        "--defender-mode",
+        choices=["fixed_release", "frame_nearest", "frame_nearest_hysteresis"],
+        default="fixed_release",
     )
+    features.add_argument("--defender-switch-margin-m", type=float, default=0.3)
     features.add_argument("--smoothing-frames", type=int, default=1)
     features.add_argument(
         "--coordinate-noise-seed", type=int,
         help="Propagate predError under the documented isotropic-Gaussian sensitivity model",
     )
+
+    audit = subparsers.add_parser(
+        "audit-game", help="Write a release-alignment and defender-policy audit bundle"
+    )
+    audit.add_argument("tracking_path")
+    audit.add_argument("events_path")
+    audit.add_argument("--game-id", required=True)
+    audit.add_argument("--output-dir", required=True)
+    audit.add_argument("--window-seconds", type=float, default=1.0)
+    audit.add_argument("--alignment-tolerance-m", type=float, default=0.05)
+    audit.add_argument("--defender-switch-margin-m", type=float, default=0.3)
     return parser
 
 
 def main() -> None:
     args = _parser().parse_args()
+    if args.command == "audit-game":
+        result = audit_game(
+            args.tracking_path,
+            args.events_path,
+            game_id=args.game_id,
+            config=AuditConfig(
+                window_seconds=args.window_seconds,
+                alignment_tolerance_m=args.alignment_tolerance_m,
+                defender_switch_margin_m=args.defender_switch_margin_m,
+            ),
+        )
+        result.write(args.output_dir)
+        print(json.dumps(result.summary, ensure_ascii=False, indent=2))
+        return
     frames, entities = load_tracking(args.tracking_path, args.game_id)
 
     if args.command == "inspect":
@@ -73,6 +102,7 @@ def main() -> None:
             game_id=args.game_id,
             window_seconds=args.window_seconds,
             defender_mode=args.defender_mode,
+            defender_switch_margin_m=args.defender_switch_margin_m,
             smoothing_frames=args.smoothing_frames,
             coordinate_noise_seed=args.coordinate_noise_seed,
         )

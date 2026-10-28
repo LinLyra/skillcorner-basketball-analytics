@@ -19,7 +19,11 @@ def main() -> None:
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), constrained_layout=True)
     logloss = uncertainty[uncertainty["metric"] == "log_loss"].copy()
     logloss["label"] = logloss["defender_definition"].map(
-        {"fixed_release": "Fixed release defender", "frame_nearest": "Frame-wise nearest"}
+        {
+            "fixed_release": "Fixed release defender",
+            "frame_nearest": "Frame-wise nearest",
+            "frame_nearest_hysteresis_0_3m": "Nearest · 0.3 m hysteresis",
+        }
     ) + " · " + logloss["quality_cohort"].map(
         {"all_eligible": "all eligible", "high_quality": "high quality"}
     )
@@ -35,7 +39,7 @@ def main() -> None:
     ax.set_yticks(y, logloss["label"])
     ax.invert_yaxis()
     ax.set_xlabel("Temporal − static log loss (95% cluster bootstrap CI)")
-    ax.set_title("No robustness condition excludes no effect")
+    ax.set_title("Every robustness interval includes zero")
     ax.grid(axis="x", alpha=0.2)
 
     ax = axes[1]

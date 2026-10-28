@@ -28,6 +28,41 @@ STATIC_NUMERIC = [
 STATIC_CATEGORICAL = ["region", "shot_type"]
 
 
+def invert_exact_sign_flip(
+    differences: np.ndarray, *, alpha: float = 0.05, grid_points: int = 120_001
+) -> dict:
+    """Invert the exact two-sided sign-flip test for a common location shift.
+
+    The sign-flip model assumes the game-level errors around the candidate
+    location are independent and symmetric. The returned hull is an exact-grid
+    inversion, not a bootstrap or a power calculation.
+    """
+    values = np.asarray(differences, dtype=float)
+    signs = np.asarray(list(itertools.product((-1, 1), repeat=len(values))), dtype=float)
+    signed_data = signs @ values / len(values)
+    signed_constant = signs.sum(axis=1) / len(values)
+    span = max(np.ptp(values), 0.01)
+    grid = np.linspace(values.min() - span, values.max() + span, grid_points)
+    accepted = np.zeros(grid_points, dtype=bool)
+    for start in range(0, grid_points, 1_000):
+        theta = grid[start:start + 1_000]
+        null_statistics = np.abs(signed_data[:, None] - signed_constant[:, None] * theta[None, :])
+        observed_statistics = np.abs(values.mean() - theta)
+        block_p = np.mean(null_statistics >= observed_statistics[None, :] - 1e-15, axis=0)
+        accepted[start:start + len(theta)] = block_p > alpha
+    if not accepted.any():
+        raise RuntimeError("Exact sign-flip inversion produced an empty confidence set")
+    accepted_grid = grid[accepted]
+    return {
+        "alpha": alpha,
+        "ci_low": float(accepted_grid.min()),
+        "ci_high": float(accepted_grid.max()),
+        "grid_step": float(grid[1] - grid[0]),
+        "confidence_set_is_contiguous": bool(np.all(np.diff(np.flatnonzero(accepted)) == 1)),
+        "method": "grid inversion of the exact two-sided sign-flip test for a symmetric common location shift",
+    }
+
+
 def model_delta(data: pd.DataFrame) -> tuple[float, pd.Series]:
     predictions = leave_one_game_out_predictions(data, specs=MODEL_SPECS[1:])
     scores = score_predictions(predictions)
@@ -64,6 +99,7 @@ def main() -> None:
     parser.add_argument("--features", type=Path, default=Path("outputs/study/shot_features_1s.csv"))
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/inference_checks"))
     parser.add_argument("--figure", type=Path, default=Path("reports/figures/inference_checks.png"))
+    parser.add_argument("--report-summary", type=Path, default=Path("reports/tables/inference_summary.json"))
     parser.add_argument("--repetitions", type=int, default=200)
     parser.add_argument("--seed", type=int, default=20261024)
     args = parser.parse_args()
@@ -81,6 +117,7 @@ def main() -> None:
     ])
     sign_p_two_sided = float(np.mean(np.abs(sign_means) >= abs(observed) - 1e-15))
     sign_p_one_sided = float(np.mean(sign_means <= observed + 1e-15))
+    exact_interval = invert_exact_sign_flip(game_differences.to_numpy())
 
     expected = cross_fitted_expectations(data)
     residuals = data[TEMPORAL].to_numpy(dtype=float) - expected
@@ -105,6 +142,11 @@ def main() -> None:
         "exact_sign_flip_two_sided_p": sign_p_two_sided,
         "exact_sign_flip_one_sided_p": sign_p_one_sided,
         "sign_flip_permutations": int(len(sign_means)),
+        "exact_sign_flip_ci95_low": exact_interval["ci_low"],
+        "exact_sign_flip_ci95_high": exact_interval["ci_high"],
+        "exact_sign_flip_ci_grid_step": exact_interval["grid_step"],
+        "exact_sign_flip_ci_contiguous": exact_interval["confidence_set_is_contiguous"],
+        "exact_sign_flip_ci_method": exact_interval["method"],
         "conditional_null_mean": float(conditional_null.mean()),
         "conditional_null_2.5pct": float(np.quantile(conditional_null, 0.025)),
         "conditional_null_97.5pct": float(np.quantile(conditional_null, 0.975)),
@@ -113,6 +155,8 @@ def main() -> None:
         "residualization": "cross-fitted quadratic Ridge on static/context features; residual vectors permuted jointly within game",
     }
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    args.report_summary.parent.mkdir(parents=True, exist_ok=True)
+    args.report_summary.write_text(json.dumps(summary, indent=2) + "\n")
     pd.DataFrame({"game_id": game_differences.index, "delta_log_loss": game_differences.values}).to_csv(
         args.output_dir / "game_differences.csv", index=False
     )
@@ -127,7 +171,10 @@ def main() -> None:
     axes[0].set_yticks(np.arange(len(ordered)), ordered.index.astype(str))
     axes[0].set_xlabel("Temporal − static log loss")
     axes[0].set_ylabel("Held-out game")
-    axes[0].set_title(f"Exact sign-flip p={sign_p_two_sided:.3f} (two-sided)")
+    axes[0].set_title(
+        f"Exact p={sign_p_two_sided:.3f}; inverted 95% "
+        f"[{exact_interval['ci_low']:.4f}, {exact_interval['ci_high']:.4f}]"
+    )
     axes[0].grid(axis="x", alpha=0.2)
     axes[1].hist(conditional_null, bins=24, color="#94A3B8", edgecolor="white")
     axes[1].axvline(observed, color="#E4572E", linewidth=3, label=f"Observed {observed:.4f}")

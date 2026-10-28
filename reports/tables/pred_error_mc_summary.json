@@ -1,0 +1,10 @@
+{
+  "draws": 200,
+  "seed": 20261024,
+  "shots_per_draw": 1211,
+  "assumption": "Independent isotropic Gaussian x/y errors; predError is the 90% radial coverage bound, so axis SD = predError/sqrt(-2*ln(0.1)).",
+  "mean_delta_log_loss": -0.0010460796924036825,
+  "mc_2.5pct": -0.0038170526317150132,
+  "mc_97.5pct": 0.0011548373832145234,
+  "fraction_temporal_better": 0.77
+}

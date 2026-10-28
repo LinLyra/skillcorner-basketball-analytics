@@ -21,11 +21,13 @@ def main() -> None:
     study = pd.read_csv("outputs/study/logo_scores.csv")
     study = study[study["window_seconds"] == 1]
     official = pd.read_csv("outputs/official_benchmark/scores.csv")
+    nested = pd.read_csv("outputs/nested_models/scores.csv")
     means = {
         "Training-game\nbase rate": base["log_loss"].mean(),
         "M0 location +\ncontext": study.loc[study["model"] == "M0_location_context", "log_loss"].mean(),
         "M1 static\ndefense": study.loc[study["model"] == "M1_static_defense", "log_loss"].mean(),
         "M2 temporal\ndefense": study.loc[study["model"] == "M2_temporal_defense", "log_loss"].mean(),
+        "Monotonic tree\nstatic": nested.loc[nested["model"] == "MonotonicTree_static", "log_loss"].mean(),
         "Official SQ\n(reference*)": official.loc[official["model"] == "Official_Shot_Quality_direct", "log_loss"].mean(),
     }
     Path("outputs/effect_context").mkdir(parents=True, exist_ok=True)
@@ -37,13 +39,12 @@ def main() -> None:
     policy = json.loads(Path("outputs/defender_policy/prediction_summary.json").read_text())
     mc = json.loads(Path("outputs/pred_error_mc/summary.json").read_text())
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.7), constrained_layout=True)
-    colors = ["#94A3B8", "#457B9D", "#2A9D8F", "#7C3AED", "#F59E0B"]
-    axes[0].bar(means.keys(), means.values(), color=colors)
-    axes[0].set_ylabel("Leave-one-game-out log loss")
-    axes[0].set_ylim(.59, .70)
-    axes[0].tick_params(axis="x", labelsize=8, labelrotation=10)
-    for label in axes[0].get_xticklabels():
-        label.set_horizontalalignment("right")
+    colors = ["#94A3B8", "#457B9D", "#2A9D8F", "#7C3AED", "#264653", "#F59E0B"]
+    axes[0].barh(list(means.keys()), list(means.values()), color=colors)
+    axes[0].set_xlabel("Leave-one-game-out log loss")
+    axes[0].set_xlim(.59, .70)
+    axes[0].tick_params(axis="y", labelsize=8)
+    axes[0].invert_yaxis()
     axes[0].set_title("Predictive scale, not just rank")
     axes[0].text(.01, -.28, "*External production reference; training overlap is unknown.", transform=axes[0].transAxes, fontsize=8)
 
@@ -61,7 +62,13 @@ def main() -> None:
     axes[2].axhline(0, color="#111827", linewidth=1)
     axes[2].set_ylabel("M2 − M1 log loss")
     axes[2].set_title("Position-error sensitivity")
-    axes[2].text(.02, .03, f"Defender switch: {policy['switch_rate']:.1%}\n|Δp| switched: {policy['mean_abs_difference_switched']:.3f}\n|Δp| unchanged: {policy['mean_abs_difference_not_switched']:.3f}", transform=axes[2].transAxes, fontsize=9)
+    axes[2].text(
+        .02, .03,
+        f"Nearest switches: {policy['nearest_switch_rate_valid_trajectories']:.1%}\n"
+        f"0.3 m hysteresis: {policy['hysteresis_0_3m_switch_rate_valid_trajectories']:.1%}\n"
+        "No detectable policy loss difference",
+        transform=axes[2].transAxes, fontsize=9,
+    )
     fig.suptitle("Beyond the Snapshot: what survives stricter scrutiny", fontsize=16)
     out = Path("reports/figures/revision_summary.png")
     fig.savefig(out, dpi=230, bbox_inches="tight")

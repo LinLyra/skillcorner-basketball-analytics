@@ -31,6 +31,7 @@ def build_shot_temporal_features(
     fps: float = 25.0,
     pressure_distance_m: float = 1.5,
     defender_mode: str = "fixed_release",
+    defender_switch_margin_m: float = 0.3,
     smoothing_frames: int = 1,
     coordinate_noise_seed: int | None = None,
     pred_error_coverage: float = 0.90,
@@ -39,6 +40,9 @@ def build_shot_temporal_features(
 
     ``fixed_release`` holds ``closestDefId`` fixed through the window.
     ``frame_nearest`` selects the nearest opponent independently in each frame.
+    ``frame_nearest_hysteresis`` starts from the official release defender and,
+    working backward, changes identity only when another defender is at least
+    ``defender_switch_margin_m`` closer. This suppresses near-tie switches.
     """
     required = {
         "id",
@@ -53,8 +57,13 @@ def build_shot_temporal_features(
         raise ValueError(f"shots table missing required columns: {missing}")
     if window_seconds <= 0 or recent_seconds <= 0 or fps <= 0:
         raise ValueError("window_seconds, recent_seconds, and fps must be positive")
-    if defender_mode not in {"fixed_release", "frame_nearest"}:
-        raise ValueError("defender_mode must be 'fixed_release' or 'frame_nearest'")
+    if defender_mode not in {"fixed_release", "frame_nearest", "frame_nearest_hysteresis"}:
+        raise ValueError(
+            "defender_mode must be 'fixed_release', 'frame_nearest', or "
+            "'frame_nearest_hysteresis'"
+        )
+    if defender_switch_margin_m < 0:
+        raise ValueError("defender_switch_margin_m must be non-negative")
     if smoothing_frames < 1 or smoothing_frames % 2 == 0:
         raise ValueError("smoothing_frames must be a positive odd integer")
     if not 0 < pred_error_coverage < 1:
@@ -89,7 +98,7 @@ def build_shot_temporal_features(
         trajectory = pd.DataFrame()
         if shooter is None:
             status = "missing_shooter"
-        elif defender_mode == "fixed_release" and defender is None:
+        elif defender_mode in {"fixed_release", "frame_nearest_hysteresis"} and defender is None:
             status = "missing_defender"
         else:
             shooter_window = shooter.loc[
@@ -149,10 +158,29 @@ def build_shot_temporal_features(
                         candidate_pairs["defender_x_m"] - candidate_pairs["shooter_x_m"],
                         candidate_pairs["defender_y_m"] - candidate_pairs["shooter_y_m"],
                     )
-                    nearest_index = candidate_pairs.groupby("frame_idx")[
-                        "candidate_distance_m"
-                    ].idxmin()
-                    trajectory = candidate_pairs.loc[nearest_index].copy()
+                    nearest_index = candidate_pairs.groupby("frame_idx")["candidate_distance_m"].idxmin()
+                    if defender_mode == "frame_nearest":
+                        trajectory = candidate_pairs.loc[nearest_index].copy()
+                    else:
+                        # Anchor on the official release defender, then traverse
+                        # backward so near ties do not create identity flicker.
+                        selected_indices: list[int] = []
+                        current_id = defender_key
+                        for frame_idx in sorted(candidate_pairs["frame_idx"].unique(), reverse=True):
+                            frame_candidates = candidate_pairs[candidate_pairs["frame_idx"] == frame_idx]
+                            nearest_row = frame_candidates.loc[frame_candidates["candidate_distance_m"].idxmin()]
+                            current_rows = frame_candidates[frame_candidates["frame_defender_id"] == current_id]
+                            if frame_idx == release_frame and not current_rows.empty:
+                                chosen = current_rows.iloc[0]
+                            elif current_rows.empty:
+                                chosen = nearest_row
+                            else:
+                                current_row = current_rows.iloc[0]
+                                improvement = current_row["candidate_distance_m"] - nearest_row["candidate_distance_m"]
+                                chosen = nearest_row if improvement >= defender_switch_margin_m else current_row
+                            current_id = chosen["frame_defender_id"]
+                            selected_indices.append(int(chosen.name))
+                        trajectory = candidate_pairs.loc[selected_indices].copy()
             trajectory = trajectory.dropna(
                 subset=["shooter_x_m", "shooter_y_m", "defender_x_m", "defender_y_m"]
             ).sort_values("frame_idx")
@@ -168,6 +196,7 @@ def build_shot_temporal_features(
             "shooter_id": shooter_key,
             "defender_id": defender_key,
             "defender_mode": defender_mode,
+            "defender_switch_margin_m": defender_switch_margin_m,
             "smoothing_frames": smoothing_frames,
             "outcome": bool(shot["outcome"]),
             "fouled": bool(shot.get("fouled", False)),

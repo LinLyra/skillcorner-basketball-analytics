@@ -11,9 +11,9 @@ Built an end-to-end, reproducible analysis of 25 Hz professional basketball trac
 - engineered interpretable temporal and multiplayer spatial features;
 - designed leakage-resistant leave-one-game-out evaluation;
 - evaluated probability calibration, uncertainty, negative controls, and subgroup stability;
-- benchmarked open models against a production-grade vendor metric;
+- compared open models with a vendor score as an external reference with unknown training overlap;
 - translated model disagreements into possession-level visual explanations;
-- maintained pinned data versions and automated tests.
+- packaged an importable game-audit API and CLI with pinned data versions and automated tests.
 
 ## Résumé bullet
 
@@ -21,4 +21,4 @@ Built a reproducible 25 Hz professional-basketball tracking pipeline covering 1,
 
 ## Interview discussion point
 
-The strongest finding was not a higher headline AUC. It was discovering that aligned temporal features contain real shot-specific information while still failing to produce a stable cross-game gain. That distinction changed the project from feature engineering into a reliability study and prevented an unsupported performance claim.
+The strongest result was not a higher headline AUC. Exact small-cluster inference showed that ten public games cannot resolve the small temporal point estimate and still cannot rule out a practically relevant gain. A separate defender-policy audit quantified identity switching, showed that a 0.3 m hysteresis rule reduces it, and found no detectable held-out accuracy advantage for any policy. That distinction turned feature engineering into a transparent measurement-reliability study without making causal or no-effect claims.

@@ -10,9 +10,9 @@ This open study tests a tempting tracking-data claim: that the defender's moveme
 
 Of 1,459 shots, 1,433 have usable shooter–defender trajectories and 1,211 non-fouled shots pass a 5 cm event/tracking alignment audit. Adding one second of closing speed, separation gain, pressure duration, and distance history changes mean LOGO log loss from 0.6646 to 0.6633. The improvement is small and uncertain: Δ = −0.00125, game-cluster 95% interval [−0.00586, 0.00316], exact two-sided sign-flip p = 0.613.
 
-The original unconditional permutation looked favorable, but it broke the relationship between temporal variables and release distance. After cross-fitted residualization on static/context features, 15.5% of within-game conditional permutations perform at least as well as observed. Nested tuning and a monotonic nonlinear tree reach the same substantive conclusion: no stable incremental temporal value is detected in these ten games.
+The original unconditional permutation looked favorable, but it broke the relationship between temporal variables and release distance. After cross-fitted residualization on static/context features, 15.5% of within-game conditional permutations perform at least as well as observed. Nested tuning and a monotonic nonlinear tree reach the same substantive conclusion: this sample cannot resolve the small observed increment from zero.
 
-The most actionable finding is definitional. A frame-wise “nearest defender” changes identity during 36.0% of one-second windows. Across 1,209 common predictions, fixed-release and frame-nearest policies correlate at 0.988, yet 68 shots differ by more than five probability points. When identity switches, the mean absolute prediction difference is 2.56 points versus 0.75 without a switch.
+The most actionable analysis is definitional. A frame-wise “nearest defender” changes identity during 36.0% of one-second windows. This is a quantified sensitivity—not a claim that practitioners are unaware of switching, and not evidence that switching causes prediction differences. The study also tests a 0.3 m hysteresis policy and compares all policies on an identical held-out cohort.
 
 ![Defender-policy case studies](reports/figures/defender_policy_cases.png)
 
@@ -20,7 +20,7 @@ SkillCorner Shot Quality has mean log loss 0.6101, numerically stronger than the
 
 ## Why this matters
 
-This is not a new proprietary-looking pressure score. It is a reproducible audit showing when tracking definitions change the basketball question being measured. The compatible interval suggests this experiment would likely have exposed an average improvement larger than roughly 0.0059 log-loss units, subject to the severe limitation of only ten game clusters.
+This is not a new proprietary-looking pressure score. It is a reproducible audit of how tracking definitions change the quantity being measured. Inverting the exact sign-flip test gives a 95% compatible location interval of [−0.00690, 0.00428] for M2−M1 log loss. The study is therefore inconclusive at an operational reference of 0.005: it cannot rule out an improvement as large as roughly 0.0069. The 0.005 reference is retrospective and is not presented as preregistered.
 
 The repository contributes:
 
@@ -30,7 +30,7 @@ The repository contributes:
 - nested LOGO tuned logistic and monotonic tree benchmarks;
 - Monte Carlo propagation of `predError` under a documented sensitivity assumption;
 - replay-ready possession tables and three defender-policy case studies;
-- a reusable `sc-basketball` command-line interface.
+- an importable `audit_game()` API plus the `sc-basketball` command-line interface.
 
 ## Reproduce
 
@@ -43,7 +43,7 @@ pip install -e '.[dev,analysis]'
 ./scripts/reproduce_all.sh
 ```
 
-The full run executes tests, rebuilds all cohorts and models, performs 200 conditional permutations and 30 position-error Monte Carlo draws, renders figures, and validates release invariants. For a fast software check:
+The full run executes tests, rebuilds all cohorts and models, performs 200 conditional permutations and 200 position-error Monte Carlo draws, renders figures, and validates release invariants. For a fast software check:
 
 ```bash
 pytest -q
@@ -59,6 +59,21 @@ sc-basketball validate-shots TRACKING.jsonl.gz EVENTS.json \
 sc-basketball build-shot-features TRACKING.jsonl.gz EVENTS.json \
   --game-id GAME_ID --window-seconds 1 \
   --defender-mode frame_nearest --output features.csv
+
+sc-basketball audit-game TRACKING.jsonl.gz EVENTS.json \
+  --game-id GAME_ID --output-dir audit_bundle
+```
+
+The same audit is importable without project scripts:
+
+```python
+from skillcorner_basketball import AuditConfig, audit_game
+
+audit = audit_game(
+    "tracking.jsonl.gz", "dynamic_events.json", game_id="GAME_ID",
+    config=AuditConfig(window_seconds=1.0, defender_switch_margin_m=0.3),
+)
+audit.write("audit_bundle")
 ```
 
 ## Study map
