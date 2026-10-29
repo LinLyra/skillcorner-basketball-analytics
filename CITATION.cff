@@ -2,7 +2,9 @@ cff-version: 1.2.0
 title: "Beyond the Snapshot: SkillCorner Basketball Analytics Lab"
 message: Please cite this software and the upstream SkillCorner dataset.
 type: software
-version: 0.1.0
+authors:
+  - name: "Beyond the Snapshot contributors"
+version: 0.2.0
 date-released: 2026-10-24
 license: MIT
 
