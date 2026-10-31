@@ -106,7 +106,6 @@ audit.write("audit_bundle")
 - [Data contract](docs/data_contract.md)
 - [Literature gap matrix](docs/literature_gap_matrix.md)
 - [Evaluation protocol](docs/evaluation_protocol.md)
-- [NBA portfolio brief](reports/nba_portfolio_brief.md)
 
 ## Interpretation and limits
 

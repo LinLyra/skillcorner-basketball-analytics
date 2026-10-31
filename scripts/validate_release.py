@@ -20,7 +20,6 @@ def main() -> None:
     required = [
         "reports/final_report.md",
         "reports/analytics_cup_submission.md",
-        "reports/nba_portfolio_brief.md",
         "reports/figures/final_summary.png",
         "reports/figures/negative_control.png",
         "reports/figures/subgroups.png",
